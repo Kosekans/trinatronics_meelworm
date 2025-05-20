@@ -5,6 +5,8 @@ const int LIMIT_SWITCH_PIN = 2;
 const int STEPPER_MOTOR_PUL_PIN = 3;
 const int STEPPER_MOTOR_DIR_PIN = 4;
 const int STEPPER_MOTOR_ENA_PIN = 5;
+const int LINEAR_MOTOR_IN3 = 8;  // Motor-Pin IN3
+const int LINEAR_MOTOR_IN4 = 9;  // Motor-Pin IN4
 
 //limit switch
 const unsigned long DEBOUNCE_DELAY = 50;  // 50ms debounce time
@@ -15,10 +17,50 @@ volatile unsigned long lastDebounceTime = 0;
 long stepCurrentPos = 0; // Changed from int to long
 int stepPulsDuration = 10; // microseconds (typical pulse width for TB6600, e.g., >4.7us)
 int stepStepsDelay = 240; // microseconds (delay between pulses, controls speed. Total period = 250us => 4000 steps/sec)
-const long STEP_LOADING_POS = -50000; //falsch // Changed from int to long
-const long STEP_UNLOADING_POS = -1000; //falsch // Changed from int to long
-const long STEP_IDLE_POS = -10000; //falsch // Changed from int to long
+const long STEP_LOADING_POS = -50000; //falsch
+const long STEP_UNLOADING_POS = -1000; //falsch
+const long STEP_IDLE_POS = -10000; //falsch
 
+//Linear Motor
+const int LINEAR_MOTOR_DUR_POS_UP = 2000; //falsch
+const int LINEAR_MOTOR_DUR_POS_MID = 1000; //falsch
+const int LINEAR_MOTOR_DUR_POS_DOWN = 0; //falsch
+int linearMotorCurrentDurPos = 0;
+
+void stopLinearMotor() {
+  digitalWrite(LINEAR_MOTOR_IN3, LOW);
+  digitalWrite(LINEAR_MOTOR_IN4, LOW);
+}
+
+void moveLinearMotor(bool direction, int duration) {
+  if (direction) {
+    digitalWrite(LINEAR_MOTOR_IN3, HIGH);
+    digitalWrite(LINEAR_MOTOR_IN4, LOW);
+  } 
+  else {
+    digitalWrite(LINEAR_MOTOR_IN3, LOW);
+    digitalWrite(LINEAR_MOTOR_IN4, HIGH);
+  }
+
+  delay(duration);
+  stopMotor();
+}
+
+void moveToLinearMotorDurPos(int pos) {
+  int durationToMove = linearMotorCurrentDurPos - pos;
+  if (durationToMove > 0) {
+    moveLinearMotor(false, durationToMove);
+  } 
+  else if (durationToMove < 0) {
+    moveLinearMotor(true, -durationToMove);
+  }
+  linearMotorCurrentDurPos = pos;
+}
+
+void initLinearMotorPos() {
+  moveLinearMotor(false, 3500);
+  stopMotor();
+}
 
 void limitSwitchISR() {
   unsigned long currentTime = millis();
@@ -96,6 +138,12 @@ void setup() {
   delay(20000); // Wait for 20 seconds
   switchTriggered = false; // Reset switchTriggered
   initStepPos(); // Initialize stepper motor position
+  
+  //linear motor
+  pinMode(LINEAR_MOTOR_IN3, OUTPUT);
+  pinMode(LINEAR_MOTOR_IN4, OUTPUT);
+  initLinearMotorPos();
+  stopLinearMotor();
 }
 
 void loop() {
