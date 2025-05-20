@@ -12,12 +12,12 @@ volatile bool switchTriggered;
 volatile unsigned long lastDebounceTime = 0;
 
 //stepper motor
-int stepCurrentPos = 0;
+long stepCurrentPos = 0; // Changed from int to long
 int stepPulsDuration = 10; // microseconds (typical pulse width for TB6600, e.g., >4.7us)
 int stepStepsDelay = 240; // microseconds (delay between pulses, controls speed. Total period = 250us => 4000 steps/sec)
-int stepLoadingPos = -50000; //falsch
-int stepUnloadingPos = -1000; //falsch
-int stepIdlePos = -10000; //falsch
+const long STEP_LOADING_POS = -50000; //falsch // Changed from int to long
+const long STEP_UNLOADING_POS = -1000; //falsch // Changed from int to long
+const long STEP_IDLE_POS = -10000; //falsch // Changed from int to long
 
 
 void limitSwitchISR() {
@@ -28,7 +28,7 @@ void limitSwitchISR() {
   }
 }
 
-void setMotorEnable(bool enable) {
+void setStepMotorEnable(bool enable) {
     if (enable) {
         digitalWrite(STEPPER_MOTOR_ENA_PIN, LOW); // Enable motor
     } else {
@@ -44,12 +44,12 @@ void setStepDirection(bool direction) { //true=up
     }
 }
 
-void moveAbsSteps(int steps) {
+void moveAbsSteps(long steps) {
     if (steps == 0) {
         return; // No movement needed
     }
     
-    for (int i = 0; i < steps; i++) {
+    for (long i = 0; i < steps; i++) {
         digitalWrite(STEPPER_MOTOR_PUL_PIN, HIGH);
         delayMicroseconds(stepPulsDuration);
         digitalWrite(STEPPER_MOTOR_PUL_PIN, LOW);
@@ -57,25 +57,25 @@ void moveAbsSteps(int steps) {
     }
 }
 
-void moveToStepPos(int stepTargerPos){
-    int stepsToMove = stepTargerPos - stepCurrentPos;
+void moveToStepPos(long stepTargerPos){ // Changed parameter type to long
+    long stepsToMove = stepTargerPos - stepCurrentPos; // Changed to long
     if (stepsToMove == 0) {
         return; // No movement needed
     }
     setStepDirection(stepsToMove > 0); // Move up if stepsToMove is positive, down if negative
-    setMotorEnable(true); // Enable motor
+    setStepMotorEnable(true); // Enable motor
     moveAbsSteps(abs(stepsToMove));
-    setMotorEnable(false); // Disable motor
+    setStepMotorEnable(false); // Disable motor
     stepCurrentPos = stepTargerPos;
 }
 
 void initStepPos() {
-    setMotorEnable(true); // Enable motor
+    setStepMotorEnable(true); // Enable motor
     while(!switchTriggered) {
         setStepDirection(true); // Move up
         moveAbsSteps(1);
     }
-    setMotorEnable(false); // Disable motor
+    setStepMotorEnable(false); // Disable motor
     stepCurrentPos = 0; // Set current position to 0 after hitting the limit switch
 }
 
@@ -92,7 +92,7 @@ void setup() {
   pinMode(STEPPER_MOTOR_ENA_PIN, OUTPUT);
   digitalWrite(STEPPER_MOTOR_ENA_PIN, HIGH); // Disable motor initially
   //first move down a bit in case the elevator is somehow on or above the limit switch
-  moveToStepPos(-10000); // Move -1000 steps down
+  moveToStepPos(-10000L); // Move -10000 steps down, ensure it's treated as long
   delay(20000); // Wait for 20 seconds
   switchTriggered = false; // Reset switchTriggered
   initStepPos(); // Initialize stepper motor position
