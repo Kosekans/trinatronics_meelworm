@@ -17,12 +17,13 @@ volatile unsigned long lastDebounceTime = 0;
 long stepCurrentPos = 0; // Changed from int to long
 int stepPulsDuration = 10; // microseconds (typical pulse width for TB6600, e.g., >4.7us)
 int stepStepsDelay = 240; // microseconds (delay between pulses, controls speed. Total period = 250us => 4000 steps/sec)
-const long STEP_LOADING_POS = -50000; //falsch
-const long STEP_UNLOADING_POS = -1000; //falsch
-const long STEP_IDLE_POS = -10000; //falsch
+const long STEP_MAXDOWN_POS = -180000;
+const long STEP_LOADING_POS = -170000; //falsch
+const long STEP_UNLOADING_POS = 0; //falsch
+const long STEP_IDLE_POS = -100000; //falsch
 
 //Linear Motor
-const int LINEAR_MOTOR_DUR_POS_UP = 2000; //falsch
+const int LINEAR_MOTOR_DUR_POS_UP = 3500; //falsch
 const int LINEAR_MOTOR_DUR_POS_MID = 1000; //falsch
 const int LINEAR_MOTOR_DUR_POS_DOWN = 0; //falsch
 int linearMotorCurrentDurPos = 0;
@@ -134,16 +135,20 @@ void setup() {
   pinMode(STEPPER_MOTOR_ENA_PIN, OUTPUT);
   digitalWrite(STEPPER_MOTOR_ENA_PIN, HIGH); // Disable motor initially
   //first move down a bit in case the elevator is somehow on or above the limit switch
-  moveToStepPos(-10000L); // Move -10000 steps down, ensure it's treated as long
-  delay(20000); // Wait for 20 seconds
+  //moveToStepPos(-10000); // Move -10000 steps down, ensure it's treated as long
+  //delay(10000); // Wait for 10 seconds
   switchTriggered = false; // Reset switchTriggered
-  initStepPos(); // Initialize stepper motor position
+  //initStepPos(); // Initialize stepper motor position
+  //moveToStepPos(STEP_IDLE_POS);
   
   //linear motor
   pinMode(LINEAR_MOTOR_IN3, OUTPUT);
   pinMode(LINEAR_MOTOR_IN4, OUTPUT);
   initLinearMotorPos();
   stopLinearMotor();
+
+   //test
+ //moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_UP);
 }
 
 void loop() {
