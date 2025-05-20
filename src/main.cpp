@@ -43,7 +43,7 @@ void moveLinearMotor(bool direction, int duration) {
   }
 
   delay(duration);
-  stopMotor();
+  stopLinearMotor();
 }
 
 void moveToLinearMotorDurPos(int pos) {
@@ -59,7 +59,7 @@ void moveToLinearMotorDurPos(int pos) {
 
 void initLinearMotorPos() {
   moveLinearMotor(false, 3500);
-  stopMotor();
+  stopLinearMotor();
 }
 
 void limitSwitchISR() {
