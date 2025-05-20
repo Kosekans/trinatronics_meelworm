@@ -1,65 +1,57 @@
 #include <Arduino.h>
 
-const int IN3 = 8;  // Motor-Pin IN3
-const int IN4 = 9;  // Motor-Pin IN4
+//pins
+const int LINEAR_MOTOR_IN3 = 8;  // Motor-Pin IN3
+const int LINEAR_MOTOR_IN4 = 9;  // Motor-Pin IN4
 
-String letzteBewegung = "stop";
+//Linear Motor
+const int LINEAR_MOTOR_DUR_POS_UP = 2000; //falsch
+const int LINEAR_MOTOR_DUR_POS_MID = 1000; //falsch
+const int LINEAR_MOTOR_DUR_POS_DOWN = 0; //falsch
+int linearMotorCurrentDurPos = 0;
+
+void stopMotor() {
+  digitalWrite(LINEAR_MOTOR_IN3, LOW);
+  digitalWrite(LINEAR_MOTOR_IN4, LOW);
+}
+
+void moveLinearMotor(bool direction, int duration) {
+  if (direction) {
+    digitalWrite(LINEAR_MOTOR_IN3, HIGH);
+    digitalWrite(LINEAR_MOTOR_IN4, LOW);
+  } 
+  else {
+    digitalWrite(LINEAR_MOTOR_IN3, LOW);
+    digitalWrite(LINEAR_MOTOR_IN4, HIGH);
+  }
+
+  delay(duration);
+  stopMotor();
+}
+
+void moveToLinearMotorDurPos(int pos) {
+  int durationToMove = linearMotorCurrentDurPos - pos;
+  if (durationToMove > 0) {
+    moveLinearMotor(false, durationToMove);
+  } 
+  else if (durationToMove < 0) {
+    moveLinearMotor(true, -durationToMove);
+  }
+  linearMotorCurrentDurPos = pos;
+}
+
+void initLinearMotorPos() {
+  moveLinearMotor(false, 3500);
+  stopMotor();
+}
 
 void setup() {
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-  Serial.begin(9600);
+  //linear motor
+  pinMode(LINEAR_MOTOR_IN3, OUTPUT);
+  pinMode(LINEAR_MOTOR_IN4, OUTPUT);
+  initLinearMotorPos();
   stopMotor();
-  Serial.println("Gib 'hoch', 'runter' oder 'mitte' ein:");
 }
 
 void loop() {
-  if (Serial.available()) {
-    String eingabe = Serial.readStringUntil('\n');
-    eingabe.trim(); // Entfernt Leerzeichen/Zeilenumbrüche
-
-    if (eingabe == "hoch") {
-      bewegeMotor("hoch", 3000);
-      letzteBewegung = "hoch";
-    } 
-    else if (eingabe == "runter") {
-      bewegeMotor("runter", 3000);
-      letzteBewegung = "runter";
-    } 
-    else if (eingabe == "mitte") {
-      if (letzteBewegung == "hoch") {
-        bewegeMotor("runter", 1500);
-        letzteBewegung = "stop";
-      } 
-      else if (letzteBewegung == "runter") {
-        bewegeMotor("hoch", 1500);
-        letzteBewegung = "stop";
-      } 
-      else {
-        Serial.println("Keine vorherige Bewegung gespeichert.");
-      }
-    } 
-    else {
-      Serial.println("Ungültige Eingabe. Bitte 'hoch', 'runter' oder 'mitte' eingeben.");
-    }
-  }
-}
-
-void bewegeMotor(String richtung, int dauer) {
-  if (richtung == "hoch") {
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
-  } 
-  else if (richtung == "runter") {
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-  }
-
-  delay(dauer);
-  stopMotor();
-}
-
-void stopMotor() {
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, LOW);
 }
