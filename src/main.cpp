@@ -17,15 +17,15 @@ volatile unsigned long lastDebounceTime = 0;
 long stepCurrentPos = 0; // Changed from int to long
 int stepPulsDuration = 10; // microseconds (typical pulse width for TB6600, e.g., >4.7us)
 int stepStepsDelay = 240; // microseconds (delay between pulses, controls speed. Total period = 250us => 4000 steps/sec)
-const long STEP_MAXDOWN_POS = -180000;
-const long STEP_LOADING_POS = -170000; //falsch
-const long STEP_UNLOADING_POS = 0; //falsch
+const long STEP_MAXDOWN_POS = -180000; // falsch
+const long STEP_LOADING_POS = STEP_MAXDOWN_POS;
+const long STEP_UNLOADING_POS = 0;
 const long STEP_IDLE_POS = -100000; //falsch
 
 //Linear Motor
-const int LINEAR_MOTOR_DUR_POS_UP = 3500; //falsch
-const int LINEAR_MOTOR_DUR_POS_MID = 1000; //falsch
-const int LINEAR_MOTOR_DUR_POS_DOWN = 0; //falsch
+const int LINEAR_MOTOR_DUR_POS_UP = 0; //falsch
+const int LINEAR_MOTOR_DUR_POS_MID = 500; //falsch
+const int LINEAR_MOTOR_DUR_POS_DOWN = 1480; //falsch
 int linearMotorCurrentDurPos = 0;
 
 void stopLinearMotor() {
@@ -113,13 +113,24 @@ void moveToStepPos(long stepTargerPos){ // Changed parameter type to long
 }
 
 void initStepPos() {
+    switchTriggered = false;
+    setStepDirection(true); // Move up
     setStepMotorEnable(true); // Enable motor
     while(!switchTriggered) {
-        setStepDirection(true); // Move up
         moveAbsSteps(1);
     }
     setStepMotorEnable(false); // Disable motor
     stepCurrentPos = 0; // Set current position to 0 after hitting the limit switch
+}
+
+void larvaeTransport() { // full cycle
+    moveToStepPos(STEP_LOADING_POS);
+    moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_UP);
+    delay(10000); 
+    moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_DOWN);
+    moveToStepPos(STEP_UNLOADING_POS); //initStepPos(); may be better cause STEP_UNLOADING_POS is at 0
+    delay(10000);
+    moveToStepPos(STEP_IDLE_POS);
 }
 
 void setup() {
@@ -134,11 +145,10 @@ void setup() {
   pinMode(STEPPER_MOTOR_DIR_PIN, OUTPUT);
   pinMode(STEPPER_MOTOR_ENA_PIN, OUTPUT);
   digitalWrite(STEPPER_MOTOR_ENA_PIN, HIGH); // Disable motor initially
-  //first move down a bit in case the elevator is somehow on or above the limit switch
-  //moveToStepPos(-10000); // Move -10000 steps down, ensure it's treated as long
-  //delay(10000); // Wait for 10 seconds
-  switchTriggered = false; // Reset switchTriggered
-  //initStepPos(); // Initialize stepper motor position
+
+  moveToStepPos(-10000); //first move down a bit in case the elevator is somehow on or above the limit switch, works cause initially the current position is set to 0
+  delay(10000);
+  initStepPos(); // Initialize stepper motor position
   //moveToStepPos(STEP_IDLE_POS);
   
   //linear motor
@@ -148,7 +158,8 @@ void setup() {
   stopLinearMotor();
 
    //test
- //moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_UP);
+  //moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_DOWN);
+  //moveToStepPos(STEP_LOADING_POS);
 }
 
 void loop() {
