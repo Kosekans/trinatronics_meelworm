@@ -5,6 +5,7 @@
 #include <Adafruit_SCD30.h>
 #include <Wire.h>
 #include <DHT.h>
+#include <Adafruit_NeoPixel.h>
 
 //Pins
 #define LIMIT_SWITCH_PIN 2
@@ -26,6 +27,11 @@
 #define PeltierIn4 14
 
 #define DHTPIN 15
+
+#define LED_PIN_STRIP1 16
+#define LED_PIN_STRIP2 17
+
+#define DOOR_PIN A0
 
 //limit switch
 const unsigned long DEBOUNCE_DELAY = 50;  // 50ms debounce time
@@ -66,13 +72,32 @@ String etat_peltier = "";
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
 
-float targetTemp = 10.0; // Température cible en °C
+float targetTemp = 20.0; // Température cible en °C
 float tolerance = 0.5;
 String inputSerial = "";
 
 
 unsigned long lastSensorRead = 0;
 const unsigned long sensorInterval = 2000;
+
+//led
+#define LED_COUNT_STRIP1 82 
+#define LED_COUNT_STRIP2 82
+
+// Declare our NeoPixel objects:
+// Argument 1 = Number of pixels in NeoPixel strip
+// Argument 2 = Arduino pin number (most are valid)
+// Argument 3 = Pixel type flags, add together as needed:
+//   NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
+//   NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
+//   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
+//   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
+//   NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
+Adafruit_NeoPixel strip1(LED_COUNT_STRIP1, LED_PIN_STRIP1, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip2(LED_COUNT_STRIP2, LED_PIN_STRIP2, NEO_GRB + NEO_KHZ800);
+
+// put function declarations here:
+void setStripColor(Adafruit_NeoPixel &strip, uint32_t color);
 
 void stopLinearMotor() {
   digitalWrite(LINEAR_MOTOR_IN3, LOW);
@@ -170,16 +195,6 @@ void initStepPos() {
     stepCurrentPos = 0; // Set current position to 0 after hitting the limit switch
 }
 
-void larvaeTransport() { // full cycle
-    moveToStepPos(STEP_LOADING_POS);
-    initLinearMotorPos(); //cause pos it all the way up, calculating the pos offsets itself relativly fast due to hardware
-    delay(10000); 
-    moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_DOWN);
-    initStepPos(); // cause STEP_UNLOADING_POS is at 0
-    delay(10000);
-    moveToStepPos(STEP_IDLE_POS);
-}
-
 void startFans() {
   analogWrite(In1, 255);
   digitalWrite(In2, LOW);
@@ -195,7 +210,80 @@ void stopFans() {
 
 }
 
+// Helper function to set all pixels of a strip to a given color
+void setStripColor(Adafruit_NeoPixel &strip, uint32_t color, int start, int end) {
+  if (end == -1) {
+    end = strip.numPixels() - 1; // Set end to the last pixel if not specified
+  }
+  
+  for (int i = start; i <= end; i++) {
+    strip.setPixelColor(i, color);
+  }
+}
+
+void ledAllred() {
+  uint32_t red = strip1.Color(255, 0, 0);
+  setStripColor(strip1, red, 0, LED_COUNT_STRIP1);
+  setStripColor(strip2, red, 0, LED_COUNT_STRIP2);
+  
+  strip1.show(); // Update strip1
+  strip2.show(); // Update strip2
+}
+
+void ledUpperWallWhite() {
+  uint32_t white = strip2.Color(255, 255, 255);
+  setStripColor(strip2, white,0,17);
+  setStripColor(strip2, white,64,LED_COUNT_STRIP2);
+  
+  strip2.show(); // Update strip2
+}
+
+void ledLowerWallWhite() {
+  uint32_t white = strip1.Color(255, 255, 255);
+  setStripColor(strip1, white,0,19);
+  setStripColor(strip1, white,62,LED_COUNT_STRIP1);
+  
+  strip1.show(); // Update strip2
+}
+
+void ledAllWhite() {
+  uint32_t white = strip1.Color(255, 255, 255);
+  setStripColor(strip1, white, 0, LED_COUNT_STRIP1);
+  setStripColor(strip2, white, 0, LED_COUNT_STRIP2);
+  
+  strip1.show(); // Update strip1
+  strip2.show(); // Update strip2
+}
+
+bool isDoorOpen() {
+  return digitalRead(DOOR_PIN) == HIGH; // LOW means the switch is activated (connected to ground)
+}
+
+void larvaeTransport() { // full cycle
+    moveToStepPos(STEP_LOADING_POS);
+    ledLowerWallWhite();
+    initLinearMotorPos(); //cause pos it all the way up, calculating the pos offsets itself relativly fast due to hardware
+    delay(10000); 
+    moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_DOWN);
+    ledAllred(); // Set LEDs to red after loading
+    initStepPos(); // cause STEP_UNLOADING_POS is at 0
+    delay(10000);
+    moveToStepPos(STEP_IDLE_POS);
+}
+
 void setup() {
+    //led
+  strip1.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
+  strip1.show();            // Turn OFF all pixels ASAP
+  strip1.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
+
+  strip2.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
+  strip2.show();            // Turn OFF all pixels ASAP
+  strip2.setBrightness(50); // Set BRIGHTNESS to about 1/5 (max = 255)
+  ledAllred(); // Set all LEDs to red initially
+  
+  pinMode(DOOR_PIN, INPUT_PULLUP); // Configure DOOR_PIN as input with pull-up resistor
+
   //amelia and rayann
   Serial.begin(115200);
 
@@ -238,7 +326,6 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(LIMIT_SWITCH_PIN), limitSwitchISR, FALLING);
   
   //stepper motor
-  /*
   pinMode(STEPPER_MOTOR_PUL_PIN, OUTPUT);
   pinMode(STEPPER_MOTOR_DIR_PIN, OUTPUT);
   pinMode(STEPPER_MOTOR_ENA_PIN, OUTPUT);
@@ -251,12 +338,19 @@ void setup() {
   //linear motor
   pinMode(LINEAR_MOTOR_IN3, OUTPUT);
   pinMode(LINEAR_MOTOR_IN4, OUTPUT);
+  ledLowerWallWhite();
   initLinearMotorPos();
   moveToLinearMotorDurPos(LINEAR_MOTOR_DUR_POS_DOWN); // Move to the down position initially
-  */
+  ledAllred(); // Set LEDs to red after initialization
 }
 
 void loop() {
+  //change led color based on door state
+  if (isDoorOpen()) {
+    ledAllWhite();
+  } else {
+    ledAllred();
+  }
   //amelia and rayann
   // --- Lecture Poids ---
   long reading = scale.get_units(20);
