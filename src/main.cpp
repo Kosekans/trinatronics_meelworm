@@ -61,6 +61,7 @@ void moveToLinearMotorDurPos(int pos) {
 void initLinearMotorPos() {
   moveLinearMotor(false, 3500);
   stopLinearMotor();
+  linearMotorCurrentDurPos = 0;
 }
 
 void limitSwitchISR() {
